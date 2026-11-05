@@ -1,0 +1,51 @@
+========================================================================
+ BỘ HỌC LIỆU SỐ – TOÁN LỚP 3 (PHIÊN BẢN RÚT GỌN TỐI GIẢN)
+ Đơn vị: Khoa Giáo dục Sớm và Tiểu học
+ Trường Đại học Giáo dục – Đại học Quốc gia Hà Nội
+========================================================================
+
+📁 DANH MỤC TỆP TRONG BỘ ZIP (CHỈ GỒM 3 TỆP CẦN THIẾT):
+1. index.html: Trang web học liệu hoàn chỉnh độc lập (All-in-One).
+2. HUONG_DAN_SU_DUNG.txt: Bản hướng dẫn mở và vận hành hệ thống.
+3. logo_truong_dai_hoc_giao_duc.png: Logo Trường Đại học Giáo dục (ĐHQGHN).
+
+------------------------------------------------------------------------
+🚀 CÁCH SỬ DỤNG NHANH NHẤT (KHÔNG CẦN CÀI ĐẶT):
+------------------------------------------------------------------------
+👉 Bước 1: Giải nén tệp zip ra máy tính (hoặc điện thoại).
+👉 Bước 2: Kích đúp chuột trực tiếp vào tệp "index.html".
+👉 Bước 3: Tệp sẽ tự động mở trên trình duyệt web của bạn (Google Chrome, 
+          Microsoft Edge, Cốc Cốc, Safari, Firefox).
+
+* ƯU ĐIỂM CỦA BẢN RÚT GỌN NÀY:
+- Hoạt động 100% độc lập, không cần cài đặt Node.js, npm hay chạy bất kỳ câu lệnh nào.
+- Toàn bộ giao diện màu xanh pastel Blue Ocean, bảng tra cứu 45 bài học SGK Toán 3,
+  bộ lọc mạch kiến thức, chức năng tải lên tài liệu và phân hệ quản trị viên
+  đều đã được tích hợp sẵn sàng bên trong tệp.
+
+------------------------------------------------------------------------
+🌐 CÁCH TRIỂN KHAI LÊN TÊN MIỀN ONLINE MIỄN PHÍ:
+------------------------------------------------------------------------
+Nếu muốn đưa trang web lên mạng để các thầy cô khác cùng truy cập:
+- Cách 1: Truy cập trang https://app.netlify.com/drop, kéo thả tệp "index.html" 
+  vào ô tải lên, bạn sẽ có ngay một đường link website online sau 5 giây.
+- Cách 2: Tải tệp "index.html" lên GitHub Pages hoặc Vercel để gắn tên miền riêng.
+
+------------------------------------------------------------------------
+🔑 THÔNG TIN TÀI KHOẢN VÀ CƠ CHẾ VẬN HÀNH:
+------------------------------------------------------------------------
+1. TÀI KHOẢN GIÁO VIÊN:
+   - Thầy cô có thể đăng ký tài khoản mới hoặc đăng nhập tài khoản demo.
+   - Cơ chế "Cho để Nhận": Mỗi giáo viên khi đóng góp (tải lên) ít nhất 1 học liệu 
+     và được duyệt thì sẽ được mở quyền tải về không giới hạn tài liệu của giáo viên khác.
+
+2. TÀI KHOẢN QUẢN TRỊ VIÊN (ADMIN):
+   - Nút đăng nhập Quản trị viên nằm riêng biệt ở góc trên bên phải hoặc chân trang.
+   - Quyền hạn: Duyệt hoặc từ chối các học liệu do giáo viên gửi lên; quản lý danh mục.
+
+3. MẠCH KIẾN THỨC & 45 BÀI HỌC SGK TOÁN 3:
+   - Bao gồm toàn bộ 45 bài học thuộc chuẩn SGK Toán 3 (Tập 1 và Tập 2) được phân bổ 
+     vào 6 mạch kiến thức trọng tâm (Số & cấu tạo số; Phép cộng, phép trừ; Phép nhân, phép chia;
+     Biểu thức; Giải toán có lời văn; Luyện tập tổng hợp).
+   - Có bảng tra cứu mục lục 45 bài học kèm số trang và bộ lọc tự động 2 chiều.
+========================================================================
