@@ -1872,7 +1872,7 @@
         if (ytMatch) {
           return {
             kind: 'iframe',
-            src: 'https://www.youtube.com/embed/' + ytMatch[1],
+           src: 'https://www.youtube.com/embed/' + ytMatch[1] + '?autoplay=0&rel=0',
             rawUrl: extUrl,
             label: 'Video YouTube'
           };
@@ -1968,7 +1968,7 @@
               </a>
             </div>
             <div class="w-full aspect-video min-h-[380px] rounded-xl overflow-hidden bg-white border border-slate-300 shadow-inner">
-              <iframe src="${safeSrc}" class="w-full h-full border-0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+              <iframe src="${safeSrc}" class="w-full h-full border-0" allowfullscreen allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
             </div>
             <p class="text-[11px] text-slate-400 text-center">
               Nếu trang web gốc không cho phép nhúng xem trước trực tiếp, thầy/cô hãy bấm <strong>"Mở liên kết trong tab mới"</strong> ở góc trên bên phải.
@@ -1993,7 +1993,7 @@
         const safeRaw = escapeHtmlAttr(cfg.rawUrl);
         container.innerHTML = `
           <div class="w-full space-y-2.5">
-            <video controls src="${safeSrc}" class="w-full aspect-video rounded-xl bg-black shadow-lg"></video>
+           <video controls preload="metadata" src="${safeSrc}" class="w-full aspect-video rounded-xl bg-black shadow-lg"></video>
             <div class="flex items-center justify-between text-xs text-slate-300 px-1">
               <span class="truncate">🎬 ${escapeHtmlAttr(cfg.label)}</span>
               <a href="${safeRaw}" target="_blank" rel="noopener noreferrer" class="text-brand-sky hover:underline font-semibold shrink-0">Mở trong tab mới</a>
@@ -2326,10 +2326,17 @@
 
         const related = approved.filter(r => r.categoryId === selectedResource.categoryId && r.id !== selectedResource.id).slice(0, 3);
         const relContainer = document.getElementById('detail-related-grid');
-        if (relContainer) {
+if (relContainer) {
           relContainer.innerHTML = related.map(getCardHTML).join('');
         }
 
+        if (currentTab === 'detail') {
+          renderDetailPreview();
+        } else {
+          const pc = document.getElementById('detail-preview-container');
+          if (pc) pc.innerHTML = '';
+        }
+      }
         renderDetailPreview();
       }
 
