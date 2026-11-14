@@ -1671,9 +1671,58 @@
       { id: 'les-45', stt: 45, title: 'Luyện tập chung', page: 101, strand: 'Luyện tập tổng hợp', categoryId: 'cat-luyen-tap', volume: 'Tập 2' }
     ];
 
+    const STORAGE_KEYS = {
+      RESOURCES: 'toan3_resources_v1',
+      FAVORITES: 'toan3_favorites_v1',
+      ACCOUNTS: 'toan3_accounts_v1',
+      CURRENT_USER: 'toan3_current_user_v1'
+    };
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEYS.RESOURCES, JSON.stringify(resources));
+        localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
+        localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(REGISTERED_ACCOUNTS));
+        if (currentUser) {
+          localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+        }
+      } catch (err) {
+        console.warn('Không thể lưu dữ liệu vào localStorage:', err);
+      }
+    }
+
+    function loadState() {
+      try {
+        const savedAcc = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
+        if (savedAcc) {
+          Object.assign(REGISTERED_ACCOUNTS, JSON.parse(savedAcc));
+        }
+        const savedUser = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          currentUser = (parsedUser && parsedUser.email && REGISTERED_ACCOUNTS[parsedUser.email])
+            ? REGISTERED_ACCOUNTS[parsedUser.email]
+            : parsedUser;
+        }
+        const savedRes = localStorage.getItem(STORAGE_KEYS.RESOURCES);
+        if (savedRes) {
+          resources = JSON.parse(savedRes);
+        }
+        const savedFav = localStorage.getItem(STORAGE_KEYS.FAVORITES);
+        if (savedFav) {
+          favorites = JSON.parse(savedFav);
+        }
+      } catch (err) {
+        console.warn('Lỗi đọc dữ liệu từ localStorage:', err);
+      }
+    }
+
     let resources = [];
 
     let favorites = [];
+    loadState();
     let currentTab = 'home';
     let selectedResource = null;
     let pendingRejectId = null;
@@ -1839,6 +1888,7 @@
         favorites.push(id);
         showToast('Đã thêm vào danh sách học liệu yêu thích!', 'success');
       }
+      saveState();
       renderApp();
     }
 
@@ -2086,6 +2136,7 @@
       if (currentUser.role === 'admin') {
         selectedResource.downloadCount += 1;
         triggerActualDownload();
+        saveState();
         showToast('Đang mở/tải học liệu (Đặc quyền Quản trị viên)...', 'success');
         renderApp();
         return;
@@ -2105,6 +2156,7 @@
       // 4. Đã có ít nhất 1 học liệu đóng góp -> Cho phép tải về!
       selectedResource.downloadCount += 1;
       triggerActualDownload();
+      saveState();
       showToast(`Tải xuống thành công! Cảm ơn thầy/cô đã đóng góp ${myUploadCount} tài liệu cho cộng đồng!`, 'success');
       renderApp();
     }
@@ -2205,6 +2257,7 @@
 
     function logoutUser() {
       currentUser = null;
+      saveState();
       showToast('Đã đăng xuất tài khoản. Bạn đang ở chế độ khách vãng lai.', 'info');
       updateHeaderUser();
       renderApp();
@@ -2460,6 +2513,7 @@
     // Moderation functions
     function approveResource(id) {
       resources = resources.map(r => r.id === id ? { ...r, status: 'approved' } : r);
+      saveState();
       showToast('Đã phê duyệt học liệu thành công! Học liệu đã hiển thị công khai.', 'success');
       renderApp();
     }
@@ -3031,6 +3085,7 @@
 
       // File Drag & Drop in Upload Page
       let currentUploadedFile = null;
+      let currentUploadedFileDataUrl = '';
       const dropzone = document.getElementById('up-dropzone');
       const fileInput = document.getElementById('up-file-input');
       const dropzoneIdle = document.getElementById('dropzone-idle');
@@ -3069,6 +3124,14 @@
         }
 
         currentUploadedFile = file;
+        currentUploadedFileDataUrl = '';
+        if (file.size <= 2 * 1024 * 1024) {
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            currentUploadedFileDataUrl = ev.target.result || '';
+          };
+          reader.readAsDataURL(file);
+        }
         const sizeFormatted = file.size > 1024 * 1024 
           ? (file.size / (1024 * 1024)).toFixed(1) + ' MB'
           : (file.size / 1024).toFixed(0) + ' KB';
@@ -3165,7 +3228,7 @@
           return;
         }
 
-        const fileObjectUrl = currentUploadedFile ? URL.createObjectURL(currentUploadedFile) : '';
+        const fileObjectUrl = currentUploadedFile ? (currentUploadedFileDataUrl || URL.createObjectURL(currentUploadedFile)) : '';
         let detectedFormat = 'Liên kết trực tuyến';
         if (currentUploadedFile) {
           detectedFormat = currentUploadedFile.name.split('.').pop().toUpperCase() + ' Tệp đính kèm';
@@ -3217,11 +3280,16 @@
         // Tăng lượt đóng góp của giáo viên để mở khóa quyền tải
         if (currentUser && currentUser.role === 'teacher') {
           currentUser.uploadCount = (currentUser.uploadCount || 0) + 1;
+          if (currentUser.email && REGISTERED_ACCOUNTS[currentUser.email]) {
+            REGISTERED_ACCOUNTS[currentUser.email].uploadCount = currentUser.uploadCount;
+          }
         }
+        saveState();
 
         showToast('🎉 Đăng tải thành công! Học liệu đã được chuyển qua Admin để thẩm định duyệt bài. Thầy/Cô đã được mở khóa quyền tải về!', 'success');
         document.getElementById('upload-form').reset();
         currentUploadedFile = null;
+        currentUploadedFileDataUrl = '';
         if (fileInput) fileInput.value = '';
         if (dropzoneSelected) dropzoneSelected.classList.add('hidden');
         if (dropzoneIdle) dropzoneIdle.classList.remove('hidden');
@@ -3275,6 +3343,7 @@
       document.getElementById('modal-confirm-btn').onclick = () => {
         if (pendingRejectId) {
           resources = resources.map(r => r.id === pendingRejectId ? { ...r, status: 'rejected' } : r);
+          saveState();
           showToast('Đã từ chối học liệu kèm lý do phản hồi cho giáo viên.', 'warning');
           document.getElementById('reject-modal').classList.add('hidden');
           pendingRejectId = null;
@@ -3327,6 +3396,7 @@
           };
         }
 
+        saveState();
         closeAuthModal();
         updateHeaderUser();
         renderApp();
@@ -3360,6 +3430,7 @@
 
         REGISTERED_ACCOUNTS[email] = newTeacher;
         currentUser = newTeacher;
+        saveState();
 
         closeAuthModal();
         updateHeaderUser();
@@ -3375,6 +3446,7 @@
 
         if ((user === 'admin@toan3.edu.vn' || user === 'admin') && pwd === 'admin123') {
           currentUser = REGISTERED_ACCOUNTS['admin@toan3.edu.vn'];
+          saveState();
           closeAuthModal();
           updateHeaderUser();
           renderApp();
