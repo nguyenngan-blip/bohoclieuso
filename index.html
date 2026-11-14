@@ -1707,8 +1707,11 @@
             : parsedUser;
         }
         const savedRes = localStorage.getItem(STORAGE_KEYS.RESOURCES);
-        if (savedRes) {
-          resources = JSON.parse(savedRes);
+       if (savedRes) {
+          const parsedRes = JSON.parse(savedRes);
+          if (Array.isArray(parsedRes) && parsedRes.length > 0) {
+            resources = parsedRes;
+          }
         }
         const savedFav = localStorage.getItem(STORAGE_KEYS.FAVORITES);
         if (savedFav) {
