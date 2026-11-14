@@ -1860,72 +1860,183 @@
       { q: 'Số gồm 6 chục nghìn, 5 trăm và 2 đơn vị là:', options: ['60502', '6502', '65020', '60520'], correct: '60502' }
     ];
 
+    function getPreviewConfig(res) {
+      const extUrl = (res.externalUrl || res.previewUrl || '').trim();
+      const fileUrl = (res.fileUrl || '').trim();
+      const fileName = (res.fileName || '').toLowerCase();
+      const fileMime = (res.fileMime || '').toLowerCase();
+
+      if (extUrl) {
+        // 1. YouTube
+        const ytMatch = extUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if (ytMatch) {
+          return {
+            kind: 'iframe',
+            src: 'https://www.youtube.com/embed/' + ytMatch[1],
+            rawUrl: extUrl,
+            label: 'Video YouTube'
+          };
+        }
+
+        // 2. Google Drive file
+        const driveFileMatch = extUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || extUrl.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/);
+        if (driveFileMatch) {
+          return {
+            kind: 'iframe',
+            src: 'https://drive.google.com/file/d/' + driveFileMatch[1] + '/preview',
+            rawUrl: extUrl,
+            label: 'Google Drive'
+          };
+        }
+
+        // 3. Google Docs / Sheets / Slides
+        const gdocMatch = extUrl.match(/docs\.google\.com\/(document|spreadsheets|presentation)\/d\/([a-zA-Z0-9_-]+)/);
+        if (gdocMatch) {
+          const docType = gdocMatch[1];
+          const docId = gdocMatch[2];
+          const suffix = docType === 'presentation' ? '/embed' : '/preview';
+          return {
+            kind: 'iframe',
+            src: 'https://docs.google.com/' + docType + '/d/' + docId + suffix,
+            rawUrl: extUrl,
+            label: 'Google ' + (docType === 'document' ? 'Docs' : docType === 'spreadsheets' ? 'Sheets' : 'Slides')
+          };
+        }
+
+        // 4. Canva
+        if (extUrl.includes('canva.com/design/')) {
+          const canvaSrc = extUrl.includes('?embed') ? extUrl : (extUrl.split('?')[0] + '?embed');
+          return {
+            kind: 'iframe',
+            src: canvaSrc,
+            rawUrl: extUrl,
+            label: 'Thiết kế Canva'
+          };
+        }
+
+        // 5. Direct image / video / pdf URL
+        const lowerUrl = extUrl.split('?')[0].toLowerCase();
+        if (/\.(png|jpe?g|gif|webp|svg)$/.test(lowerUrl)) {
+          return { kind: 'image', src: extUrl, rawUrl: extUrl, label: 'Hình ảnh trực tuyến' };
+        }
+        if (/\.(mp4|webm|ogg|mov)$/.test(lowerUrl)) {
+          return { kind: 'video', src: extUrl, rawUrl: extUrl, label: 'Video trực tuyến' };
+        }
+
+        // 6. Generic external URL
+        return { kind: 'iframe', src: extUrl, rawUrl: extUrl, label: 'Liên kết trực tuyến' };
+      }
+
+      if (fileUrl) {
+        if (fileMime.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg)$/.test(fileName)) {
+          return { kind: 'image', src: fileUrl, rawUrl: fileUrl, label: res.fileName || 'Hình ảnh đính kèm', isLocalFile: true };
+        }
+        if (fileMime.startsWith('video/') || /\.(mp4|webm|ogg|mov)$/.test(fileName)) {
+          return { kind: 'video', src: fileUrl, rawUrl: fileUrl, label: res.fileName || 'Video đính kèm', isLocalFile: true };
+        }
+        if (fileMime === 'application/pdf' || fileName.endsWith('.pdf')) {
+          return { kind: 'pdf', src: fileUrl, rawUrl: fileUrl, label: res.fileName || 'Tài liệu PDF', isLocalFile: true };
+        }
+        return { kind: 'local-other', src: fileUrl, rawUrl: fileUrl, label: res.fileName || 'Tệp đính kèm', isLocalFile: true };
+      }
+
+      return { kind: 'none' };
+    }
+
+    function escapeHtmlAttr(str) {
+      return String(str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
     function renderDetailPreview() {
       const container = document.getElementById('detail-preview-container');
-      if (!container) return;
+      if (!container || !selectedResource) return;
 
-      if (selectedResource.type === 'video') {
+      const cfg = getPreviewConfig(selectedResource);
+
+      if (cfg.kind === 'iframe') {
+        const safeSrc = escapeHtmlAttr(cfg.src);
+        const safeRaw = escapeHtmlAttr(cfg.rawUrl);
         container.innerHTML = `
-          <div class="w-full aspect-video rounded-xl overflow-hidden bg-black flex flex-col items-center justify-center relative">
-            <img src="${selectedResource.thumbnailUrl}" class="w-full h-full object-cover opacity-60">
-            <div class="absolute inset-0 flex flex-col items-center justify-center">
-              <button onclick="showToast('Đang phát video mô phỏng bài giảng Toán 3...', 'info')" class="w-16 h-16 rounded-full bg-brand-primary text-white flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
-                <i data-lucide="play" class="w-8 h-8 fill-white ml-1"></i>
-              </button>
-              <span class="mt-3 text-xs font-semibold bg-black/70 px-3 py-1 rounded-full">
-                Bấm để phát bài giảng hoạt hình (${selectedResource.durationMinutes} phút)
-              </span>
+          <div class="w-full space-y-2.5">
+            <div class="flex flex-wrap items-center justify-between gap-2 bg-slate-800/90 text-slate-200 px-3.5 py-2 rounded-lg border border-slate-700 text-xs">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="px-2 py-0.5 rounded bg-brand-primary/20 text-brand-sky font-bold shrink-0">${escapeHtmlAttr(cfg.label)}</span>
+                <span class="truncate text-slate-300" title="${safeRaw}">${safeRaw}</span>
+              </div>
+              <a href="${safeRaw}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-primary hover:bg-brand-sky text-white font-bold rounded-md text-[11px] shrink-0 transition-colors">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Mở liên kết trong tab mới
+              </a>
+            </div>
+            <div class="w-full aspect-video min-h-[380px] rounded-xl overflow-hidden bg-white border border-slate-300 shadow-inner">
+              <iframe src="${safeSrc}" class="w-full h-full border-0" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+            </div>
+            <p class="text-[11px] text-slate-400 text-center">
+              Nếu trang web gốc không cho phép nhúng xem trước trực tiếp, thầy/cô hãy bấm <strong>"Mở liên kết trong tab mới"</strong> ở góc trên bên phải.
+            </p>
+          </div>
+        `;
+      } else if (cfg.kind === 'pdf') {
+        const safeSrc = escapeHtmlAttr(cfg.src);
+        container.innerHTML = `
+          <div class="w-full space-y-2.5">
+            <div class="flex items-center justify-between bg-slate-800/90 text-slate-200 px-3.5 py-2 rounded-lg border border-slate-700 text-xs">
+              <span class="font-bold truncate">📄 ${escapeHtmlAttr(cfg.label)}</span>
+              <a href="${safeSrc}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-primary hover:bg-brand-sky text-white font-bold rounded-md text-[11px] shrink-0 transition-colors">
+                <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Mở toàn màn hình
+              </a>
+            </div>
+            <iframe src="${safeSrc}" class="w-full h-[500px] rounded-xl border border-slate-300 bg-white"></iframe>
+          </div>
+        `;
+      } else if (cfg.kind === 'video') {
+        const safeSrc = escapeHtmlAttr(cfg.src);
+        const safeRaw = escapeHtmlAttr(cfg.rawUrl);
+        container.innerHTML = `
+          <div class="w-full space-y-2.5">
+            <video controls src="${safeSrc}" class="w-full aspect-video rounded-xl bg-black shadow-lg"></video>
+            <div class="flex items-center justify-between text-xs text-slate-300 px-1">
+              <span class="truncate">🎬 ${escapeHtmlAttr(cfg.label)}</span>
+              <a href="${safeRaw}" target="_blank" rel="noopener noreferrer" class="text-brand-sky hover:underline font-semibold shrink-0">Mở trong tab mới</a>
             </div>
           </div>
         `;
-      } else if (selectedResource.type === 'game' || selectedResource.type === 'interactive') {
-        const q = mathQuestions[miniGameIdx];
+      } else if (cfg.kind === 'image') {
+        const safeSrc = escapeHtmlAttr(cfg.src);
+        const safeRaw = escapeHtmlAttr(cfg.rawUrl);
         container.innerHTML = `
-          <div class="w-full max-w-lg bg-slate-800 rounded-xl p-5 border border-slate-700 text-center space-y-3">
-            <div class="flex items-center justify-between text-xs text-brand-sky pb-2 border-b border-slate-700">
-              <span class="font-bold flex items-center gap-1">
-                <i data-lucide="gamepad-2" class="w-4 h-4"></i> Mô phỏng trò chơi Toán 3
-              </span>
-              <span>Điểm số: <strong class="text-amber-400 font-bold">${miniGameScore}</strong></span>
+          <div class="w-full space-y-2.5 text-center">
+            <img src="${safeSrc}" alt="${escapeHtmlAttr(selectedResource.title)}" class="max-h-[460px] mx-auto rounded-xl object-contain bg-white p-1 shadow-lg">
+            <div class="text-xs text-slate-300">
+              <a href="${safeRaw}" target="_blank" rel="noopener noreferrer" class="text-brand-sky hover:underline font-semibold">Xem ảnh kích thước đầy đủ</a>
             </div>
-            <div class="py-2">
-              <div class="text-[11px] text-slate-400">Câu hỏi ${miniGameIdx + 1}/${mathQuestions.length}:</div>
-              <div class="text-xl sm:text-2xl font-black text-white mt-1">${q.q}</div>
+          </div>
+        `;
+      } else if (cfg.kind === 'local-other') {
+        container.innerHTML = `
+          <div class="w-full max-w-md bg-white rounded-xl p-6 text-slate-800 shadow-lg space-y-4 border border-slate-200 text-center">
+            <div class="w-14 h-14 rounded-2xl bg-sky-50 text-brand-primary mx-auto flex items-center justify-center border border-sky-100">
+              <i data-lucide="file-text" class="w-7 h-7"></i>
             </div>
-            <div class="grid grid-cols-2 gap-2">
-              ${q.options.map(opt => `
-                <button onclick="handleQuizAnswer('${opt}')" class="py-2.5 bg-slate-700 hover:bg-brand-primary text-white font-bold rounded-lg text-xs sm:text-sm transition-colors border border-slate-600">
-                  ${opt}
-                </button>
-              `).join('')}
+            <div>
+              <div class="text-sm font-extrabold text-brand-deep break-words">${escapeHtmlAttr(selectedResource.fileName || selectedResource.title)}</div>
+              <div class="text-xs text-slate-500 mt-1">${escapeHtmlAttr(selectedResource.fileFormat)} • ${escapeHtmlAttr(selectedResource.fileSize)}</div>
             </div>
-            <div class="text-[10px] text-slate-400 pt-1">Học sinh có thể trải nghiệm trực tiếp trên máy tính hoặc máy tính bảng</div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+              Định dạng tệp này không hỗ trợ xem trực tiếp trên trình duyệt. Thầy/cô vui lòng tải tệp về máy để mở bằng phần mềm chuyên dụng.
+            </p>
+            <button onclick="downloadActiveResource()" class="px-5 py-2.5 bg-brand-primary text-white text-xs font-bold rounded-lg hover:bg-brand-deep transition-all inline-flex items-center gap-2">
+              <i data-lucide="download" class="w-4 h-4"></i> Tải xuống tệp học liệu
+            </button>
           </div>
         `;
       } else {
         container.innerHTML = `
-          <div class="w-full max-w-md bg-white rounded-xl p-5 text-slate-800 shadow-lg space-y-3 border border-slate-300 text-left">
-            <div class="border-b-2 border-brand-primary pb-2 text-center">
-              <div class="text-[10px] font-bold text-brand-primary uppercase">Trường Tiểu học ........................</div>
-              <div class="text-sm font-extrabold text-brand-deep">${selectedResource.title}</div>
-              <div class="text-[11px] text-slate-500">Họ và tên: ....................................... Lớp 3.....</div>
+          <div class="w-full max-w-md bg-slate-800/80 rounded-xl p-6 text-slate-200 border border-slate-700 text-center space-y-3">
+            <div class="w-12 h-12 rounded-full bg-slate-700 text-slate-300 mx-auto flex items-center justify-center">
+              <i data-lucide="file-question" class="w-6 h-6"></i>
             </div>
-            <div class="space-y-1.5 text-xs">
-              <div class="p-2 bg-slate-50 rounded border border-slate-200">
-                <strong>Bài 1 (Nhận biết):</strong> Tính nhẩm: 7 x 4 = ... ; 56 : 7 = ... ; 7 x 8 = ...
-              </div>
-              <div class="p-2 bg-slate-50 rounded border border-slate-200">
-                <strong>Bài 2 (Thông hiểu):</strong> Có 28 quả cam xếp đều vào 7 đĩa. Hỏi mỗi đĩa có bao nhiêu quả cam?
-              </div>
-              <div class="p-2 bg-slate-50 rounded border border-slate-200">
-                <strong>Bài 3 (Vận dụng):</strong> Một cửa hàng có 63m vải, đã bán 1/7 số vải đó. Hỏi cửa hàng còn lại bao nhiêu mét vải?
-              </div>
-            </div>
-            <div class="text-center pt-1">
-              <button onclick="downloadActiveResource()" class="px-4 py-2 bg-brand-primary text-white text-xs font-bold rounded-lg hover:bg-brand-deep transition-all inline-flex items-center gap-1.5">
-                <i data-lucide="download" class="w-3.5 h-3.5"></i> Tải về bản in PDF chất lượng cao
-              </button>
-            </div>
+            <div class="text-sm font-bold text-white">Chưa có liên kết hoặc tệp đính kèm</div>
+            <p class="text-xs text-slate-400">Học liệu "${escapeHtmlAttr(selectedResource.title)}" chưa được gắn tệp hoặc đường dẫn xem trước.</p>
           </div>
         `;
       }
@@ -1957,10 +2068,25 @@
         return;
       }
 
+      // Helper thực hiện tải/mở tệp thực tế
+      const triggerActualDownload = () => {
+        if (selectedResource.fileUrl) {
+          const a = document.createElement('a');
+          a.href = selectedResource.fileUrl;
+          a.download = selectedResource.fileName || selectedResource.title || 'hoc-lieu-toan-3';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } else if (selectedResource.externalUrl) {
+          window.open(selectedResource.externalUrl, '_blank', 'noopener,noreferrer');
+        }
+      };
+
       // 2. Tài khoản Quản trị viên (Admin) -> Được tải ngay không điều kiện
       if (currentUser.role === 'admin') {
         selectedResource.downloadCount += 1;
-        showToast('Đang tải tệp về máy (Đặc quyền Quản trị viên)...', 'success');
+        triggerActualDownload();
+        showToast('Đang mở/tải học liệu (Đặc quyền Quản trị viên)...', 'success');
         renderApp();
         return;
       }
@@ -1978,6 +2104,7 @@
 
       // 4. Đã có ít nhất 1 học liệu đóng góp -> Cho phép tải về!
       selectedResource.downloadCount += 1;
+      triggerActualDownload();
       showToast(`Tải xuống thành công! Cảm ơn thầy/cô đã đóng góp ${myUploadCount} tài liệu cho cộng đồng!`, 'success');
       renderApp();
     }
@@ -3026,6 +3153,23 @@
         const stage = document.getElementById('up-stage').value;
         const objective = document.getElementById('up-objective').value.trim();
         const guide = document.getElementById('up-guide').value.trim();
+        const externalLink = document.getElementById('up-link') ? document.getElementById('up-link').value.trim() : '';
+
+        if (!currentUploadedFile && !externalLink) {
+          showToast('Thầy/cô vui lòng đính kèm tệp hoặc nhập liên kết chia sẻ (Drive/YouTube/Web)!', 'warning');
+          return;
+        }
+
+        const fileObjectUrl = currentUploadedFile ? URL.createObjectURL(currentUploadedFile) : '';
+        let detectedFormat = 'Liên kết trực tuyến';
+        if (currentUploadedFile) {
+          detectedFormat = currentUploadedFile.name.split('.').pop().toUpperCase() + ' Tệp đính kèm';
+        } else if (externalLink) {
+          const low = externalLink.toLowerCase();
+          if (low.includes('youtube.com') || low.includes('youtu.be')) detectedFormat = 'YouTube Video';
+          else if (low.includes('drive.google.com') || low.includes('docs.google.com')) detectedFormat = 'Google Drive / Docs';
+          else if (low.includes('canva.com')) detectedFormat = 'Canva';
+        }
 
         const newRes = {
           id: 'res-' + Date.now(),
@@ -3042,12 +3186,16 @@
           cognitiveLevel: cognitive,
           teachingStage: stage,
           thumbnailUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=600&q=80',
+          externalUrl: externalLink,
+          fileUrl: fileObjectUrl,
+          fileName: currentUploadedFile ? currentUploadedFile.name : '',
+          fileMime: currentUploadedFile ? currentUploadedFile.type : '',
+          previewUrl: externalLink || fileObjectUrl,
+          downloadUrl: fileObjectUrl || externalLink,
           fileSize: currentUploadedFile 
             ? (currentUploadedFile.size > 1024 * 1024 ? (currentUploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB' : (currentUploadedFile.size / 1024).toFixed(0) + ' KB')
-            : '2.8 MB',
-          fileFormat: currentUploadedFile 
-            ? currentUploadedFile.name.split('.').pop().toUpperCase() + ' Tệp đính kèm'
-            : (type === 'video' ? 'MP4 Video' : 'PDF Document'),
+            : 'Liên kết ngoài',
+          fileFormat: detectedFormat,
           objective: objective,
           teachingGuide: guide || 'Áp dụng trong giờ dạy học trên lớp.',
           durationMinutes: 15,
