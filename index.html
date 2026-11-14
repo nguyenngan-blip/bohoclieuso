@@ -609,6 +609,9 @@
                 <input type="checkbox" name="filter-type" value="video" class="rounded text-brand-primary"> Video bài giảng
               </label>
               <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-brand-ice">
+  <input type="checkbox" name="filter-type" value="lesson_plan" class="rounded text-brand-primary"> Kế hoạch bài dạy
+</label>
+              <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-brand-ice">
                 <input type="checkbox" name="filter-type" value="worksheet" class="rounded text-brand-primary"> Phiếu bài tập
               </label>
               <label class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-brand-ice">
@@ -926,6 +929,7 @@
             <div>
               <label class="block text-xs font-bold text-brand-text mb-1">Loại học liệu</label>
               <select id="up-type" class="w-full px-3 py-2 text-xs bg-brand-bg border border-brand-border rounded-btn font-semibold">
+                <option value="lesson_plan">Kế hoạch bài dạy (Giáo án PDF/DOCX)</option>
                 <option value="worksheet">Phiếu bài tập (PDF/DOCX)</option>
                 <option value="video">Video bài giảng</option>
                 <option value="game">Trò chơi học tập</option>
@@ -1787,6 +1791,7 @@
     function getCardHTML(res) {
       const typeBadges = {
         video: { label: 'Video', bg: 'bg-amber-100 text-amber-800' },
+        lesson_plan: { label: 'Kế hoạch bài dạy', bg: 'bg-sky-100 text-sky-800' },
         worksheet: { label: 'Phiếu bài tập', bg: 'bg-emerald-100 text-emerald-800' },
         game: { label: 'Trò chơi', bg: 'bg-purple-100 text-purple-800' },
         interactive: { label: 'Tương tác', bg: 'bg-cyan-100 text-cyan-800' }
