@@ -1726,7 +1726,19 @@
       }
     }
 
-   console.log(localStorage.getItem('toan3_resources_v1'))
+   let resources = [];
+    setTimeout(() => {
+      const btn = document.createElement('button');
+      btn.innerText = '📥 Bấm vào đây để Copy học liệu sang Điện thoại';
+      btn.style = 'position:fixed;bottom:16px;left:16px;z-index:9999;background:#0284C7;color:#fff;padding:10px 16px;border-radius:8px;font-weight:bold;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;';
+      btn.onclick = () => {
+        const data = localStorage.getItem('toan3_resources_v1') || '[]';
+        navigator.clipboard.writeText('let resources = ' + data + ';').then(() => {
+          alert('Đã copy xong! Giờ bạn mở file index.html, xóa đoạn vừa thêm rồi bấm Ctrl+V dán vào chỗ let resources = []; nhé!');
+        });
+      };
+      document.body.appendChild(btn);
+    }, 1000);
 
     let favorites = [];
     loadState();
