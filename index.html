@@ -1682,7 +1682,9 @@
       CURRENT_USER: 'toan3_current_user_v1'
     };
 
-    function saveState() {
+    const FIREBASE_DB_URL = 'https://bohoclieuso-e10fa-default-rtdb.firebaseio.com';
+
+    function saveLocalOnly() {
       try {
         localStorage.setItem(STORAGE_KEYS.RESOURCES, JSON.stringify(resources));
         localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(favorites));
@@ -1695,6 +1697,91 @@
       } catch (err) {
         console.warn('Không thể lưu dữ liệu vào localStorage:', err);
       }
+    }
+
+    async function syncToCloud() {
+      if (!FIREBASE_DB_URL) return;
+      try {
+        await Promise.all([
+          fetch(`${FIREBASE_DB_URL}/resources.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(resources)
+          }),
+          fetch(`${FIREBASE_DB_URL}/accounts.json`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(REGISTERED_ACCOUNTS)
+          })
+        ]);
+      } catch (err) {
+        console.warn('Lỗi đồng bộ lên Firebase:', err);
+      }
+    }
+
+    async function syncFromCloud() {
+      if (!FIREBASE_DB_URL) return;
+      try {
+        const [resResp, accResp] = await Promise.all([
+          fetch(`${FIREBASE_DB_URL}/resources.json`),
+          fetch(`${FIREBASE_DB_URL}/accounts.json`)
+        ]);
+        let changed = false;
+
+        if (accResp.ok) {
+          const cloudAcc = await accResp.json();
+          if (cloudAcc && typeof cloudAcc === 'object') {
+            Object.assign(REGISTERED_ACCOUNTS, cloudAcc);
+            if (currentUser && currentUser.email && REGISTERED_ACCOUNTS[currentUser.email]) {
+              currentUser = REGISTERED_ACCOUNTS[currentUser.email];
+            }
+          }
+        }
+
+        if (resResp.ok) {
+          const cloudRes = await resResp.json();
+          const cloudList = Array.isArray(cloudRes)
+            ? cloudRes.filter(Boolean)
+            : (cloudRes && typeof cloudRes === 'object' ? Object.values(cloudRes).filter(Boolean) : []);
+
+          if (cloudList.length === 0 && resources.length > 0) {
+            await syncToCloud();
+          } else if (cloudList.length > 0) {
+            const mergedMap = new Map();
+            cloudList.forEach(item => {
+              if (item && item.id) mergedMap.set(item.id, item);
+            });
+            let localHasNew = false;
+            resources.forEach(localItem => {
+              if (localItem && localItem.id && !mergedMap.has(localItem.id)) {
+                mergedMap.set(localItem.id, localItem);
+                localHasNew = true;
+              }
+            });
+            const mergedList = Array.from(mergedMap.values());
+            if (JSON.stringify(mergedList) !== JSON.stringify(resources)) {
+              resources = mergedList;
+              changed = true;
+            }
+            if (localHasNew) {
+              await syncToCloud();
+            }
+          }
+        }
+
+        if (changed) {
+          saveLocalOnly();
+          if (typeof updateHeaderUser === 'function') updateHeaderUser();
+          if (typeof renderApp === 'function') renderApp();
+        }
+      } catch (err) {
+        console.warn('Lỗi tải dữ liệu từ Firebase:', err);
+      }
+    }
+
+    function saveState() {
+      saveLocalOnly();
+      syncToCloud();
     }
 
     function loadState() {
@@ -1711,7 +1798,7 @@
             : parsedUser;
         }
         const savedRes = localStorage.getItem(STORAGE_KEYS.RESOURCES);
-       if (savedRes) {
+        if (savedRes) {
           const parsedRes = JSON.parse(savedRes);
           if (Array.isArray(parsedRes) && parsedRes.length > 0) {
             resources = parsedRes;
@@ -1726,22 +1813,14 @@
       }
     }
 
-   let resources = [];
-    setTimeout(() => {
-      const btn = document.createElement('button');
-      btn.innerText = '📥 Bấm vào đây để Copy học liệu sang Điện thoại';
-      btn.style = 'position:fixed;bottom:16px;left:16px;z-index:9999;background:#0284C7;color:#fff;padding:10px 16px;border-radius:8px;font-weight:bold;font-size:12px;box-shadow:0 4px 12px rgba(0,0,0,0.2);cursor:pointer;';
-      btn.onclick = () => {
-        const data = localStorage.getItem('toan3_resources_v1') || '[]';
-        navigator.clipboard.writeText('let resources = ' + data + ';').then(() => {
-          alert('Đã copy xong! Giờ bạn mở file index.html, xóa đoạn vừa thêm rồi bấm Ctrl+V dán vào chỗ let resources = []; nhé!');
-        });
-      };
-      document.body.appendChild(btn);
-    }, 1000);
+    let resources = [];
 
     let favorites = [];
     loadState();
+    window.addEventListener('DOMContentLoaded', () => {
+      syncFromCloud();
+      setInterval(syncFromCloud, 6000);
+    });
     let currentTab = 'home';
     let selectedResource = null;
     let pendingRejectId = null;
