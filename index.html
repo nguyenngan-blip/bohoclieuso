@@ -200,8 +200,7 @@
             </div>
 
             <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-brand-text tracking-tight leading-tight">
-        
-         BỘ HỌC LIỆU SỐ <br />
+              KHO HỌC LIỆU SỐ <br />
               <span class="text-brand-primary">TOÁN LỚP 3</span>
             </h1>
 
@@ -566,7 +565,7 @@
             <i data-lucide="layers" class="w-4 h-4 text-brand-primary"></i>
             <span>Kho tài nguyên mở</span>
           </div>
-          <h1 class="text-2xl sm:text-3xl font-extrabold text-brand-text">Bộ học liệu số Toán lớp 3</h1>
+          <h1 class="text-2xl sm:text-3xl font-extrabold text-brand-text">Kho học liệu số Toán lớp 3</h1>
           <p class="text-xs sm:text-sm text-brand-muted mt-1">
             Khám phá tài nguyên phục vụ dạy học Số và Phép tính Toán 3 theo chuẩn GDPT 2018.
           </p>
@@ -841,6 +840,10 @@
                 <span>Chia sẻ</span>
               </button>
             </div>
+            <button id="detail-edit-btn" class="hidden w-full py-2.5 px-3 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-btn text-xs font-bold flex items-center justify-center gap-1.5 transition-colors">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
+              <span>Chỉnh sửa học liệu</span>
+            </button>
           </div>
 
           <!-- Gom bộ học liệu đầy đủ theo cùng bài học -->
@@ -872,7 +875,7 @@
           <i data-lucide="upload-cloud" class="w-4 h-4 text-brand-primary"></i>
           <span>Đóng góp tài nguyên</span>
         </div>
-        <h1 class="text-2xl sm:text-3xl font-extrabold text-brand-text">Đăng tải học liệu Toán lớp 3</h1>
+        <h1 id="up-page-title" class="text-2xl sm:text-3xl font-extrabold text-brand-text">Đăng tải học liệu Toán lớp 3</h1>
         <p class="text-xs sm:text-sm text-brand-muted mt-1">
           Chia sẻ các bài giảng, phiếu bài tập hoặc trò chơi hữu ích cho cộng đồng giáo viên tiểu học. Mọi tài nguyên sẽ được kiểm duyệt trong 24 giờ.
         </p>
@@ -1086,7 +1089,7 @@
           <button type="button" id="up-cancel-btn" class="px-5 py-2.5 bg-white border border-brand-border text-brand-text text-xs font-semibold rounded-btn hover:bg-brand-ice">
             Hủy bỏ
           </button>
-          <button type="submit" class="px-6 py-2.5 bg-brand-primary hover:bg-brand-deep text-white text-xs font-bold rounded-btn shadow-soft transition-all flex items-center gap-2">
+          <button type="submit" id="up-submit-btn" class="px-6 py-2.5 bg-brand-primary hover:bg-brand-deep text-white text-xs font-bold rounded-btn shadow-soft transition-all flex items-center gap-2">
             <i data-lucide="check-circle" class="w-4 h-4"></i> Gửi kiểm duyệt học liệu
           </button>
         </div>
@@ -1818,6 +1821,7 @@
     let currentTab = 'home';
     let selectedResource = null;
     let pendingRejectId = null;
+    let editingResourceId = null;
 
     let filterState = {
       keyword: '',
@@ -2525,6 +2529,21 @@
         document.getElementById('detail-copyright').innerText = selectedResource.copyrightInfo;
         document.getElementById('detail-format-badge').innerText = selectedResource.fileFormat;
 
+        const detailEditBtn = document.getElementById('detail-edit-btn');
+        if (detailEditBtn) {
+          const canEdit = currentUser && (
+            currentUser.role === 'admin' ||
+            (selectedResource.authorName && selectedResource.authorName.includes(currentUser.name)) ||
+            (selectedResource.authorId && selectedResource.authorId === currentUser.id)
+          );
+          if (canEdit) {
+            detailEditBtn.classList.remove('hidden');
+            detailEditBtn.onclick = () => openEditResource(selectedResource.id);
+          } else {
+            detailEditBtn.classList.add('hidden');
+          }
+        }
+
         // Gom học liệu cùng bài học SGK
         const bundleBox = document.getElementById('detail-lesson-bundle-box');
         const bundleList = document.getElementById('detail-lesson-bundle-list');
@@ -2630,8 +2649,9 @@
                 }
               </td>
               <td class="p-3.5 font-bold text-brand-text">${r.downloadCount}</td>
-              <td class="p-3.5 text-right">
+              <td class="p-3.5 text-right whitespace-nowrap space-x-2">
                 <button onclick="openDetail('${r.id}')" class="text-brand-primary hover:underline font-semibold">Xem</button>
+                <button onclick="openEditResource('${r.id}')" class="text-amber-600 hover:underline font-semibold">Sửa</button>
               </td>
             </tr>
           `).join('');
@@ -2678,6 +2698,7 @@
             </td>
             <td class="p-3 text-right space-x-1.5 whitespace-nowrap">
               <button onclick="openDetail('${r.id}')" class="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold">Xem</button>
+              <button onclick="openEditResource('${r.id}')" class="px-2 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded text-xs font-semibold">Sửa</button>
               <button onclick="approveResource('${r.id}')" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold">Phê duyệt</button>
               <button onclick="openRejectModal('${r.id}')" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-bold">Từ chối</button>
             </td>
@@ -2703,6 +2724,83 @@
     function openRejectModal(id) {
       pendingRejectId = id;
       document.getElementById('reject-modal').classList.remove('hidden');
+    }
+
+    function resetUploadFormMode() {
+      editingResourceId = null;
+      const titleEl = document.getElementById('up-page-title');
+      const submitBtn = document.getElementById('up-submit-btn');
+      if (titleEl) titleEl.innerText = 'Đăng tải học liệu Toán lớp 3';
+      if (submitBtn) submitBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Gửi kiểm duyệt học liệu';
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function openEditResource(id) {
+      const res = resources.find(r => r.id === id);
+      if (!res) return;
+      if (!currentUser) {
+        showToast('Vui lòng đăng nhập để chỉnh sửa học liệu!', 'warning');
+        openAuthModal('teacher-login');
+        return;
+      }
+
+      editingResourceId = id;
+      const form = document.getElementById('upload-form');
+      if (form) form.reset();
+
+      const setVal = (elId, val) => {
+        const el = document.getElementById(elId);
+        if (el) el.value = val || '';
+      };
+
+      setVal('up-title', res.title);
+      setVal('up-desc', res.description);
+      setVal('up-type', res.type || 'lesson_plan');
+      setVal('up-category', res.categoryId || 'cat-so');
+      if (typeof updateUploadLessonDropdown === 'function') updateUploadLessonDropdown();
+
+      const upLessonEl = document.getElementById('up-lesson');
+      const customWrap = document.getElementById('up-custom-lesson-container');
+      if (upLessonEl) {
+        if (res.lessonId && Array.from(upLessonEl.options).some(o => o.value === res.lessonId)) {
+          upLessonEl.value = res.lessonId;
+          if (customWrap) customWrap.classList.add('hidden');
+        } else {
+          upLessonEl.value = 'custom';
+          if (customWrap) customWrap.classList.remove('hidden');
+          setVal('up-custom-lesson', res.lessonName || '');
+        }
+      }
+
+      setVal('up-cognitive', res.cognitiveLevel || 'thong_hieu');
+      setVal('up-stage', res.teachingStage || 'luyen_tap');
+      setVal('up-objective', res.objective || '');
+      setVal('up-guide', res.teachingGuide || '');
+      setVal('up-link', res.externalUrl || '');
+
+      const dropIdle = document.getElementById('dropzone-idle');
+      const dropSelected = document.getElementById('dropzone-file-selected');
+      const fileIconEl = document.getElementById('selected-file-icon');
+      const fileNameEl = document.getElementById('selected-file-name');
+      const fileSizeEl = document.getElementById('selected-file-size');
+      if (res.fileUrl && res.fileName && dropIdle && dropSelected) {
+        if (fileIconEl) fileIconEl.innerText = res.fileName.split('.').pop().toLowerCase();
+        if (fileNameEl) fileNameEl.innerText = res.fileName + ' (Tệp hiện tại)';
+        if (fileSizeEl) fileSizeEl.innerText = (res.fileSize || 'Tệp đính kèm') + ' • Giữ nguyên nếu không thay tệp mới';
+        dropIdle.classList.add('hidden');
+        dropSelected.classList.remove('hidden');
+      } else if (dropIdle && dropSelected) {
+        dropSelected.classList.add('hidden');
+        dropIdle.classList.remove('hidden');
+      }
+
+      const titleEl = document.getElementById('up-page-title');
+      const submitBtn = document.getElementById('up-submit-btn');
+      if (titleEl) titleEl.innerText = 'Chỉnh sửa học liệu Toán lớp 3';
+      if (submitBtn) submitBtn.innerHTML = '<i data-lucide="save" class="w-4 h-4"></i> Lưu thay đổi học liệu';
+
+      switchTab('upload');
+      showToast('Đang chỉnh sửa học liệu. Sửa xong bấm "Lưu thay đổi học liệu".', 'info');
     }
 
     // INITIALIZATION
@@ -3418,20 +3516,83 @@
         const guide = document.getElementById('up-guide').value.trim();
         const externalLink = document.getElementById('up-link') ? document.getElementById('up-link').value.trim() : '';
 
-        if (!currentUploadedFile && !externalLink) {
+        const existingRes = editingResourceId ? resources.find(r => r.id === editingResourceId) : null;
+        const hasExistingFile = existingRes && existingRes.fileUrl && dropzoneSelected && !dropzoneSelected.classList.contains('hidden');
+
+        if (!currentUploadedFile && !externalLink && !hasExistingFile) {
           showToast('Thầy/cô vui lòng đính kèm tệp hoặc nhập liên kết chia sẻ (Drive/YouTube/Web)!', 'warning');
           return;
         }
 
-        const fileObjectUrl = currentUploadedFile ? (currentUploadedFileDataUrl || URL.createObjectURL(currentUploadedFile)) : '';
+        let fileObjectUrl = '';
+        let finalFileName = '';
+        let finalFileMime = '';
+        let finalFileSize = 'Liên kết ngoài';
         let detectedFormat = 'Liên kết trực tuyến';
+
         if (currentUploadedFile) {
+          fileObjectUrl = currentUploadedFileDataUrl || URL.createObjectURL(currentUploadedFile);
+          finalFileName = currentUploadedFile.name;
+          finalFileMime = currentUploadedFile.type;
+          finalFileSize = currentUploadedFile.size > 1024 * 1024
+            ? (currentUploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB'
+            : (currentUploadedFile.size / 1024).toFixed(0) + ' KB';
           detectedFormat = currentUploadedFile.name.split('.').pop().toUpperCase() + ' Tệp đính kèm';
+        } else if (hasExistingFile) {
+          fileObjectUrl = existingRes.fileUrl;
+          finalFileName = existingRes.fileName || '';
+          finalFileMime = existingRes.fileMime || '';
+          finalFileSize = existingRes.fileSize || 'Tệp đính kèm';
+          detectedFormat = existingRes.fileFormat || 'Tệp đính kèm';
         } else if (externalLink) {
           const low = externalLink.toLowerCase();
           if (low.includes('youtube.com') || low.includes('youtu.be')) detectedFormat = 'YouTube Video';
           else if (low.includes('drive.google.com') || low.includes('docs.google.com')) detectedFormat = 'Google Drive / Docs';
           else if (low.includes('canva.com')) detectedFormat = 'Canva';
+        }
+
+        if (existingRes) {
+          const updatedRes = {
+            ...existingRes,
+            title: title,
+            description: desc || 'Học liệu toán học bổ ích cho học sinh lớp 3.',
+            type: type,
+            categoryId: catId,
+            categoryName: catObj ? catObj.name : 'Toán 3',
+            lessonId: lessonId,
+            lessonName: lessonName,
+            lessonPage: lessonPage,
+            lessonStrand: lessonStrand,
+            lessonVolume: lessonVolume,
+            cognitiveLevel: cognitive,
+            teachingStage: stage,
+            externalUrl: externalLink,
+            fileUrl: fileObjectUrl,
+            fileName: finalFileName,
+            fileMime: finalFileMime,
+            previewUrl: externalLink || fileObjectUrl,
+            downloadUrl: fileObjectUrl || externalLink,
+            fileSize: finalFileSize,
+            fileFormat: detectedFormat,
+            objective: objective,
+            teachingGuide: guide || 'Áp dụng trong giờ dạy học trên lớp.'
+          };
+          resources = resources.map(r => r.id === existingRes.id ? updatedRes : r);
+          selectedResource = updatedRes;
+          saveState();
+
+          showToast('Đã lưu thay đổi học liệu và đồng bộ lên hệ thống!', 'success');
+          document.getElementById('upload-form').reset();
+          currentUploadedFile = null;
+          currentUploadedFileDataUrl = '';
+          if (fileInput) fileInput.value = '';
+          if (dropzoneSelected) dropzoneSelected.classList.add('hidden');
+          if (dropzoneIdle) dropzoneIdle.classList.remove('hidden');
+          resetUploadFormMode();
+          updateHeaderUser();
+          renderApp();
+          switchTab('detail');
+          return;
         }
 
         const newRes = {
@@ -3451,13 +3612,11 @@
           thumbnailUrl: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=600&q=80',
           externalUrl: externalLink,
           fileUrl: fileObjectUrl,
-          fileName: currentUploadedFile ? currentUploadedFile.name : '',
-          fileMime: currentUploadedFile ? currentUploadedFile.type : '',
+          fileName: finalFileName,
+          fileMime: finalFileMime,
           previewUrl: externalLink || fileObjectUrl,
           downloadUrl: fileObjectUrl || externalLink,
-          fileSize: currentUploadedFile 
-            ? (currentUploadedFile.size > 1024 * 1024 ? (currentUploadedFile.size / (1024 * 1024)).toFixed(1) + ' MB' : (currentUploadedFile.size / 1024).toFixed(0) + ' KB')
-            : 'Liên kết ngoài',
+          fileSize: finalFileSize,
           fileFormat: detectedFormat,
           objective: objective,
           teachingGuide: guide || 'Áp dụng trong giờ dạy học trên lớp.',
@@ -3488,6 +3647,7 @@
         if (fileInput) fileInput.value = '';
         if (dropzoneSelected) dropzoneSelected.classList.add('hidden');
         if (dropzoneIdle) dropzoneIdle.classList.remove('hidden');
+        resetUploadFormMode();
         
         // Cập nhật giao diện
         updateHeaderUser();
@@ -3495,8 +3655,8 @@
         switchTab('dashboard');
       };
 
-      document.getElementById('up-cancel-btn').onclick = () => switchTab('library');
-      document.getElementById('dash-upload-btn').onclick = () => switchTab('upload');
+      document.getElementById('up-cancel-btn').onclick = () => { const wasEditing = Boolean(editingResourceId); resetUploadFormMode(); switchTab(wasEditing ? 'dashboard' : 'library'); };
+      document.getElementById('dash-upload-btn').onclick = () => { resetUploadFormMode(); document.getElementById('upload-form').reset(); switchTab('upload'); };
 
       // Dashboard Subtabs
       const dashMy = document.getElementById('dash-tab-my');
